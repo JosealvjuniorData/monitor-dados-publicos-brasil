@@ -1,0 +1,9 @@
+streamlit
+basedosdados
+pandas
+plotly
+pygwalker
+sweetviz
+numpy<2.0
+db-dtypes
+google-cloud-bigquery

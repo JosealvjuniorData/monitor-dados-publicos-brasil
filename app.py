@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 23 11:17:24 2026
+
+@author: josej
+"""
 import streamlit as st
 import basedosdados as bd
 import pandas as pd
@@ -24,8 +30,24 @@ try:
 except ImportError:
     TEM_SWEETVIZ = False
 
-# --- AUTENTICAÇÃO ---
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
+# --- AUTENTICAÇÃO INTELIGENTE (LOCAL vs NUVEM) ---
+import tempfile
+
+# Se o arquivo local existir, usa ele (Seu computador)
+if os.path.exists("credenciais.json"):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
+else:
+    # Se não existir, estamos na Nuvem!
+    # Criamos um arquivo temporário com as senhas que estão nos "Secrets"
+    # O basedosdados EXIGE um arquivo físico, então criamos um falso aqui.
+    try:
+        if "gcp_service_account" in st.secrets:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp:
+                json.dump(dict(st.secrets["gcp_service_account"]), temp)
+                temp.flush() # Garante que escreveu tudo
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp.name
+    except Exception as e:
+        st.error(f"Erro de autenticação na nuvem: {e}")
 
 st.set_page_config(layout="wide", page_title="Catálogo BI Público", page_icon="📊")
 
