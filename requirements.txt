@@ -5,3 +5,4 @@ pygwalker
 sweetviz
 numpy<2.0
 google-cloud-bigquery
+db-dtypes

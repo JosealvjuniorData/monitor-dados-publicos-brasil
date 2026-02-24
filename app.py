@@ -39,20 +39,21 @@ st.write("### 2. Baixando Dados...")
 if st.button("🚀 Testar Conexão Agora"):
     with st.spinner("Conectando ao Google..."):
         try:
-            # Passa as credenciais EXPLICITAMENTE para o cliente
+            # Passa as credenciais EXPLICITAMENTE
             client = bigquery.Client(credentials=credenciais, project=credenciais.project_id)
             
-            # Query ultra leve (apenas 3 linhas)
+            # Query ultra leve
             query = "SELECT * FROM `basedosdados.br_ibge_populacao.municipio` LIMIT 3"
             
+            # ADICIONAMOS TIMEOUT: Se não responder em 15s, ele cancela
             job = client.query(query)
-            df = job.to_dataframe()
+            result = job.result(timeout=15) # <--- O segredo anti-travamento
+            df = result.to_dataframe()
             
-            st.balloons() # Solta balões se der certo!
+            st.balloons()
             st.success("🎉 SUCESSO ABSOLUTO! O BigQuery respondeu!")
             st.dataframe(df)
             
         except Exception as e:
-            st.error(f"❌ Falha no BigQuery: {e}")
-            st.markdown("---")
-            st.warning("Dica: Se o erro for sobre 'db-dtypes', avise que adicionaremos ao requirements.")
+            st.error(f"❌ Falha: {e}")
+            st.write("Se o erro mencionar 'db-dtypes', adicione ao requirements.txt!")
