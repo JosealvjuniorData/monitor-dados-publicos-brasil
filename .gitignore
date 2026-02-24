@@ -1,0 +1,17 @@
+# Arquivos de ambiente e sistema
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.ipynb_checkpoints/
+
+# Ambientes Virtuais (Pastas pesadas que não sobem)
+pygwalker_env/
+env/
+venv/
+anaconda3/
+
+# SEGURANÇA (O MAIS IMPORTANTE)
+credenciais.json
+secrets.toml
+*.bat
