@@ -5,7 +5,7 @@ Created on Mon Feb 23 11:17:24 2026
 @author: josej
 """
 import streamlit as st
-import basedosdados as bd
+#import basedosdados as bd
 import pandas as pd
 import json
 import os
