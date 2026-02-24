@@ -7,55 +7,52 @@ Created on Mon Feb 23 11:17:24 2026
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-import json
-import os
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-# --- CONFIGURAÇÃO DA PÁGINA (Primeira coisa a rodar) ---
-st.set_page_config(layout="wide", page_title="Monitor MVP", page_icon="🚀")
+# --- CONFIGURAÇÃO INICIAL ---
+st.set_page_config(layout="wide", page_title="Diagnóstico Final", page_icon="🧪")
+st.title("🧪 Diagnóstico: Conexão Direta (Sem Arquivos)")
 
-st.title("🚀 Monitor de Dados - Modo de Diagnóstico")
+# --- PASSO 1: AUTENTICAÇÃO VIA MEMÓRIA ---
+st.write("### 1. Tentando Autenticação Direta...")
 
-# --- PASSO 1: DIAGNÓSTICO DE CREDENCIAIS ---
-st.write("### 1. Verificando Credenciais...")
+try:
+    # Verifica se os segredos existem
+    if "gcp_service_account" not in st.secrets:
+        st.error("❌ Erro Crítico: 'gcp_service_account' não encontrado nos Secrets!")
+        st.stop() # Para tudo se não tiver senha
 
-if os.path.exists("credenciais.json"):
-    st.success("✅ Arquivo 'credenciais.json' encontrado na raiz!")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
-else:
-    st.warning("⚠️ Arquivo não encontrado. Tentando criar via Secrets...")
-    if "gcp_service_account" in st.secrets:
+    # Cria as credenciais direto da memória (sem arquivo json)
+    info_credenciais = dict(st.secrets["gcp_service_account"])
+    credenciais = service_account.Credentials.from_service_account_info(info_credenciais)
+    
+    st.success(f"✅ Credenciais carregadas para o projeto: **{info_credenciais.get('project_id')}**")
+
+except Exception as e:
+    st.error(f"❌ Erro ao ler secrets: {e}")
+    st.stop()
+
+# --- PASSO 2: CONEXÃO COM BIGQUERY ---
+st.write("### 2. Baixando Dados...")
+
+if st.button("🚀 Testar Conexão Agora"):
+    with st.spinner("Conectando ao Google..."):
         try:
-            with open("credenciais.json", "w") as f:
-                json.dump(dict(st.secrets["gcp_service_account"]), f)
-            st.success("✅ Arquivo 'credenciais.json' criado com sucesso via Secrets!")
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
+            # Passa as credenciais EXPLICITAMENTE para o cliente
+            client = bigquery.Client(credentials=credenciais, project=credenciais.project_id)
+            
+            # Query ultra leve (apenas 3 linhas)
+            query = "SELECT * FROM `basedosdados.br_ibge_populacao.municipio` LIMIT 3"
+            
+            job = client.query(query)
+            df = job.to_dataframe()
+            
+            st.balloons() # Solta balões se der certo!
+            st.success("🎉 SUCESSO ABSOLUTO! O BigQuery respondeu!")
+            st.dataframe(df)
+            
         except Exception as e:
-            st.error(f"❌ Erro ao criar credenciais: {e}")
-    else:
-        st.error("❌ Segredo 'gcp_service_account' não encontrado no Streamlit Cloud.")
-
-# --- PASSO 2: TESTE DE CONEXÃO ---
-st.write("### 2. Teste de Conexão com BigQuery...")
-
-if st.button("Testar Conexão Agora"):
-    try:
-        # Tenta conectar e baixar APENAS 5 linhas de uma tabela pública leve
-        client = bigquery.Client()
-        query = "SELECT * FROM `basedosdados.br_ibge_populacao.municipio` LIMIT 5"
-        
-        st.info(f"Executando query: `{query}`")
-        
-        job = client.query(query)
-        df = job.to_dataframe()
-        
-        st.success("🎉 SUCESSO! Conexão estabelecida.")
-        st.dataframe(df)
-        
-    except Exception as e:
-        st.error(f"❌ Falha na conexão: {e}")
-        st.write("Dica: Verifique se a Service Account tem permissão 'BigQuery Job User'.")
-
-st.write("---")
-st.write("Se você vê esta tela, o Streamlit NÃO está travado. O problema estava no código anterior.")
+            st.error(f"❌ Falha no BigQuery: {e}")
+            st.markdown("---")
+            st.warning("Dica: Se o erro for sobre 'db-dtypes', avise que adicionaremos ao requirements.")
