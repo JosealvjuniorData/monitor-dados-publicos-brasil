@@ -181,7 +181,7 @@ if tabela_id:
         st.divider()
         opcoes_nav = ["📄 Dados Brutos"]
         if TEM_PYGWALKER: opcoes_nav.append("🎨 BI Self-Service")
-        if TEM_SWEETVIZ: opcoes_nav.append("🍭 Relatório IA")
+        if TEM_SWEETVIZ: opcoes_nav.append("🍭 Relatório Análise Automática")
             
         escolha = st.radio("Escolha a Visualização:", opcoes_nav, horizontal=True)
         st.divider()
@@ -209,11 +209,11 @@ if tabela_id:
                     st.error(f"Erro no PyGWalker: {e}")
 
         # --- 3. SWEETVIZ ---
-        elif escolha == "🍭 Relatório IA":
-            st.markdown("### 🤖 Relatório de Inteligência Artificial")
+        elif escolha == "🍭 Relatório Análise Automática":
+            st.markdown("### 🤖 Relatório de Análise Exploratória Automática")
             
             if st.button("📊 GERAR RELATÓRIO AGORA", type="primary"):
-                with st.spinner("A IA está analisando..."):
+                with st.spinner("A Ferramenta está analisando..."):
                     try:
                         df_report = df.copy()
                         for col in df_report.columns:
