@@ -12,6 +12,7 @@ import os
 import streamlit.components.v1 as components 
 import plotly.express as px
 import numpy as np 
+from google.cloud import bigquery
 
 # --- 💉 VACINA ANTI-ERRO NUMPY ---
 if not hasattr(np, 'VisibleDeprecationWarning'):
@@ -104,18 +105,18 @@ else:
     sigla_uf = None
     st.sidebar.caption("🚫 Filtro de UF desativado no modo Agregado.")
 
-# --- EXTRAÇÃO DE DADOS (CÉREBRO NOVO) ---
+# --- EXTRAÇÃO DE DADOS (CÉREBRO NOVO - ROBUSTO PARA NUVEM) ---
+
 @st.cache_data(ttl=3600)
 def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
+    # Ajusta o nome da tabela se necessário
     if not tabela_sql.startswith("basedosdados."):
         tabela_full = f"basedosdados.{tabela_sql}"
     else:
         tabela_full = tabela_sql
     
-    # --- ESTRATÉGIA 1: AGREGAÇÃO (Visão Histórica) ---
+    # --- MONTAGEM DA QUERY (IGUAL AO ANTERIOR) ---
     if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
-        # Aqui fazemos a mágica: o SQL soma tudo antes de enviar pra gente
-        # Tentamos agrupar pelas colunas comuns de tempo e categoria
         query = f"""
         SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
         FROM `{tabela_full}`
@@ -123,21 +124,28 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         GROUP BY ano, mes, tipo_veiculo
         ORDER BY ano DESC, mes DESC
         """
-        # Nota: Removemos id_municipio e sigla_uf para caber na memória
-    
-    # --- ESTRATÉGIA 2: DETALHADA (Visão Granular) ---
     else:
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
         if ano_min: query += f" AND ano >= {ano_min}"
         if uf: query += f" AND sigla_uf = '{uf}'"
         
+        # Tenta ordenar se tiver colunas de tempo
         if "ano" in tabela_sql or "data" in tabela_sql: 
             try: query += " ORDER BY ano DESC"
             except: pass 
         
         query += " LIMIT 50000" 
     
-    return bd.read_sql(query=query, billing_project_id=proj_id)
+    # --- AQUI ESTÁ A MUDANÇA MÁGICA ---
+    # Em vez de bd.read_sql, usamos o cliente oficial do BigQuery
+    try:
+        client = bigquery.Client() # Ele pega automaticamente o arquivo de credenciais que criamos
+        job = client.query(query)  # Envia a query
+        df = job.to_dataframe()    # Recebe os dados
+        return df
+    except Exception as e:
+        # Se der erro, lançamos para o Streamlit mostrar
+        raise Exception(f"Erro no BigQuery: {e}")
 
 # --- ÁREA PRINCIPAL ---
 st.title("📚 Catálogo Analítico de Dados Públicos")
