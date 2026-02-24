@@ -1,9 +1,0 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 24 11:18:12 2026
-
-@author: josej
-"""
-
-[server]
-fileWatcherType = "none"
