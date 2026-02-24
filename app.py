@@ -4,8 +4,8 @@ Created on Mon Feb 23 11:17:24 2026
 
 @author: josej
 """
+# -*- coding: utf-8 -*-
 import streamlit as st
-#import basedosdados as bd
 import pandas as pd
 import json
 import os
@@ -13,6 +13,7 @@ import streamlit.components.v1 as components
 import plotly.express as px
 import numpy as np 
 from google.cloud import bigquery
+from google.oauth2 import service_account # Importante para autenticação robusta
 
 # --- 💉 VACINA ANTI-ERRO NUMPY ---
 if not hasattr(np, 'VisibleDeprecationWarning'):
@@ -31,26 +32,21 @@ try:
 except ImportError:
     TEM_SWEETVIZ = False
 
-# --- AUTENTICAÇÃO INTELIGENTE (LOCAL vs NUVEM) ---
-import tempfile
-
-# Se o arquivo local existir, usa ele (Seu computador)
-if os.path.exists("credenciais.json"):
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
-else:
-    # Se não existir, estamos na Nuvem!
-    # Criamos um arquivo temporário com as senhas que estão nos "Secrets"
-    # O basedosdados EXIGE um arquivo físico, então criamos um falso aqui.
-    try:
-        if "gcp_service_account" in st.secrets:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp:
-                json.dump(dict(st.secrets["gcp_service_account"]), temp)
-                temp.flush() # Garante que escreveu tudo
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp.name
-    except Exception as e:
-        st.error(f"Erro de autenticação na nuvem: {e}")
-
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Catálogo BI Público", page_icon="📊")
+
+# --- AUTENTICAÇÃO ROBUSTA (A CORREÇÃO PRINCIPAL) ---
+# Em vez de tempfile, vamos criar o arquivo na raiz se ele não existir
+if not os.path.exists("credenciais.json"):
+    if "gcp_service_account" in st.secrets:
+        try:
+            with open("credenciais.json", "w") as f:
+                json.dump(dict(st.secrets["gcp_service_account"]), f)
+        except Exception as e:
+            st.error(f"Erro ao criar arquivo de credenciais: {e}")
+
+# Define a variável de ambiente explicitamente
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
 
 ARQUIVO_CATALOGO = "catalogo_mvp.json"
 
@@ -64,16 +60,16 @@ catalogo_atual = carregar_catalogo()
 
 # --- BARRA LATERAL ---
 st.sidebar.title("⚙️ Configurações")
-# --- AVISO DE TRANSPARÊNCIA (NOVO) ---
 st.sidebar.info(
-    "ℹ️ **Fonte de Dados:** Este painel utiliza a camada gratuita da 'Base dos Dados'. "
-    "Alguns indicadores podem apresentar atraso de 3 a 12 meses em relação à data atual "
-    "devido às políticas de acesso da API."
+    "ℹ️ **Fonte de Dados:** Base dos Dados (BigQuery). "
+    "Indicadores podem ter atraso devido ao processamento oficial."
 )
+
+# SEU ID DO PROJETO GOOGLE CLOUD (Confirme se é este mesmo no console do Google)
 project_id = "paineldadosabertos" 
 
 if not catalogo_atual:
-    st.sidebar.error("⚠️ Catálogo não encontrado. Rode o 'sync_catalogo.py' primeiro.")
+    st.sidebar.error("⚠️ Catálogo não encontrado. Verifique se 'catalogo_mvp.json' está no GitHub.")
     st.stop()
 
 st.sidebar.subheader("🔍 Explorador de Bases")
@@ -91,13 +87,11 @@ if tema:
 st.sidebar.divider()
 st.sidebar.subheader("🎯 Estratégia de Dados")
 
-# NOVA OPÇÃO: Agrupar dados
-agrupar_brasil = st.sidebar.checkbox("🧮 Visão Nacional Agregada", value=False, help="Marca essa opção para somar os dados de todos os municípios e ver o histórico completo do Brasil.")
+agrupar_brasil = st.sidebar.checkbox("🧮 Visão Nacional Agregada", value=False)
 
 st.sidebar.subheader("🌪️ Filtros")
 ano_minimo = st.sidebar.number_input("Ano inicial:", min_value=1990, max_value=2026, value=2018)
 
-# O filtro de UF só faz sentido se NÃO estivermos vendo o agregado nacional
 if not agrupar_brasil:
     filtrar_uf = st.sidebar.checkbox("Filtrar por UF?")
     sigla_uf = st.sidebar.selectbox("UF:", ["DF", "SP", "RJ", "MG", "BA", "RS", "PR", "PE"], index=0) if filtrar_uf else None
@@ -105,17 +99,14 @@ else:
     sigla_uf = None
     st.sidebar.caption("🚫 Filtro de UF desativado no modo Agregado.")
 
-# --- EXTRAÇÃO DE DADOS (CÉREBRO NOVO - ROBUSTO PARA NUVEM) ---
+# --- EXTRAÇÃO DE DADOS OTIMIZADA ---
 
 @st.cache_data(ttl=3600)
 def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
-    # Ajusta o nome da tabela se necessário
-    if not tabela_sql.startswith("basedosdados."):
-        tabela_full = f"basedosdados.{tabela_sql}"
-    else:
-        tabela_full = tabela_sql
+    # Ajusta o nome da tabela
+    tabela_full = f"basedosdados.{tabela_sql}" if not tabela_sql.startswith("basedosdados.") else tabela_sql
     
-    # --- MONTAGEM DA QUERY (IGUAL AO ANTERIOR) ---
+    # --- QUERY ---
     if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
         query = f"""
         SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
@@ -123,28 +114,28 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         WHERE ano >= {ano_min}
         GROUP BY ano, mes, tipo_veiculo
         ORDER BY ano DESC, mes DESC
+        LIMIT 1000
         """
     else:
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
         if ano_min: query += f" AND ano >= {ano_min}"
         if uf: query += f" AND sigla_uf = '{uf}'"
         
-        # Tenta ordenar se tiver colunas de tempo
-        if "ano" in tabela_sql or "data" in tabela_sql: 
-            try: query += " ORDER BY ano DESC"
-            except: pass 
+        # REMOVI O ORDER BY PESADO TEMPORARIAMENTE PARA TESTE
+        # query += " ORDER BY ano DESC" 
         
-        query += " LIMIT 50000" 
+        # --- LIMITE DE SEGURANÇA (IMPORTANTE) ---
+        # Reduzido para 100 apenas para destravar o app. Se funcionar, aumentamos.
+        query += " LIMIT 100" 
     
-    # --- AQUI ESTÁ A MUDANÇA MÁGICA ---
-    # Em vez de bd.read_sql, usamos o cliente oficial do BigQuery
+    # --- CONEXÃO ---
     try:
-        client = bigquery.Client() # Ele pega automaticamente o arquivo de credenciais que criamos
-        job = client.query(query)  # Envia a query
-        df = job.to_dataframe()    # Recebe os dados
+        # Forçamos o cliente a usar o projeto correto e as credenciais do arquivo
+        client = bigquery.Client(project=proj_id)
+        job = client.query(query)
+        df = job.to_dataframe()
         return df
     except Exception as e:
-        # Se der erro, lançamos para o Streamlit mostrar
         raise Exception(f"Erro no BigQuery: {e}")
 
 # --- ÁREA PRINCIPAL ---
@@ -152,11 +143,11 @@ st.title("📚 Catálogo Analítico de Dados Públicos")
 
 if tabela_id:
     st.write(f"### Analisando: **{tabela_nome}**")
+    st.caption(f"ID da Tabela: `{tabela_id}`")
     
     if st.button("🚀 Carregar e Analisar Dados", type="primary"):
-        with st.spinner("Consultando BigQuery..."):
+        with st.spinner("Conectando ao Google BigQuery..."):
             try:
-                # Passamos o novo parâmetro 'agrupar_brasil'
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
                 
                 # Tratamento de Data
@@ -170,35 +161,29 @@ if tabela_id:
                     except: pass
 
                 st.session_state['df_analise'] = df
+                st.success("Dados carregados com sucesso!") # Feedback visual
             except Exception as e:
-                st.error(f"Erro na consulta SQL: {e}")
-                st.warning("Dica: O modo 'Agregado' funciona melhor em bases como Frota e CAGED. Em outras, tente desmarcar.")
-
+                st.error(f"Falha na extração: {e}")
+                
     if 'df_analise' in st.session_state:
         df = st.session_state['df_analise']
         
-        # --- NAVEGAÇÃO ---
         st.divider()
         opcoes_nav = ["📄 Dados Brutos"]
         if TEM_PYGWALKER: opcoes_nav.append("🎨 BI Self-Service")
-        if TEM_SWEETVIZ: opcoes_nav.append("🍭 Relatório Análise Automática")
+        if TEM_SWEETVIZ: opcoes_nav.append("🍭 Relatório IA")
             
         escolha = st.radio("Escolha a Visualização:", opcoes_nav, horizontal=True)
         st.divider()
         
-        # --- 1. DADOS ---
         if escolha == "📄 Dados Brutos":
-            st.caption(f"Visualizando {len(df)} registros. (Modo Agregado: {agrupar_brasil})")
             st.dataframe(df, use_container_width=True)
             
-        # --- 2. PYGWALKER ---
         elif escolha == "🎨 BI Self-Service":
-            if len(df) == 0:
-                st.warning("⚠️ Tabela vazia.")
-            else:
-                st.info("💡 Arraste 'data_referencia' para o Eixo X para ver a evolução temporal!")
+            if TEM_PYGWALKER:
                 try:
                     df_safe = df.copy()
+                    # Converte tudo que é objeto para string para evitar erro do PyGWalker
                     for col in df_safe.columns:
                         if df_safe[col].dtype == 'object':
                             df_safe[col] = df_safe[col].astype(str)
@@ -206,37 +191,15 @@ if tabela_id:
                     pyg_html = pyg.walk(df_safe, return_html=True)
                     components.html(pyg_html, height=1000, scrolling=True)
                 except Exception as e:
-                    st.error(f"Erro no PyGWalker: {e}")
+                    st.error(f"Erro PyGWalker: {e}")
 
-        # --- 3. SWEETVIZ ---
-        elif escolha == "🍭 Relatório Análise Automática":
-            st.markdown("### 🤖 Relatório de Análise Exploratória Automática")
-            
-            if st.button("📊 GERAR RELATÓRIO AGORA", type="primary"):
-                with st.spinner("A Ferramenta está analisando..."):
-                    try:
-                        df_report = df.copy()
-                        for col in df_report.columns:
-                            if df_report[col].dtype == 'object':
-                                df_report[col] = df_report[col].astype(str)
-                        
-                        analise = sv.analyze(df_report)
-                        analise.show_html("relatorio_temp.html", open_browser=False, layout='vertical', scale=1.0)
-                        
-                        with open("relatorio_temp.html", 'r', encoding='utf-8') as f:
-                            html_code = f.read()
-                        
-                        components.html(html_code, height=1100, scrolling=True)
-
-                        st.download_button(
-                            label="📥 Baixar Relatório Completo (.html)",
-                            data=html_code,
-                            file_name=f"Relatorio_{tabela_nome}.html",
-                            mime="text/html"
-                        )
-                        
-                    except Exception as e:
-                        st.error(f"Erro técnico: {e}")
+        elif escolha == "🍭 Relatório IA":
+             if TEM_SWEETVIZ:
+                if st.button("Gerar Relatório"):
+                    analise = sv.analyze(df)
+                    analise.show_html("relatorio.html", open_browser=False)
+                    with open("relatorio.html", 'r', encoding='utf-8') as f:
+                        components.html(f.read(), height=1000, scrolling=True)
 
 else:
     st.info("👈 Selecione uma base no menu lateral.")
