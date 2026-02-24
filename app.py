@@ -11,49 +11,50 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(layout="wide", page_title="Diagnóstico Final", page_icon="🧪")
-st.title("🧪 Diagnóstico: Conexão Direta (Sem Arquivos)")
+st.set_page_config(layout="wide", page_title="Diagnóstico Final", page_icon="🔧")
+st.title("🔧 Diagnóstico: Modo de Compatibilidade (REST API)")
 
-# --- PASSO 1: AUTENTICAÇÃO VIA MEMÓRIA ---
-st.write("### 1. Tentando Autenticação Direta...")
+st.write("### 1. Autenticação...")
 
+# --- AUTENTICAÇÃO ---
 try:
-    # Verifica se os segredos existem
     if "gcp_service_account" not in st.secrets:
-        st.error("❌ Erro Crítico: 'gcp_service_account' não encontrado nos Secrets!")
-        st.stop() # Para tudo se não tiver senha
+        st.error("❌ Secrets não encontrados.")
+        st.stop()
 
-    # Cria as credenciais direto da memória (sem arquivo json)
     info_credenciais = dict(st.secrets["gcp_service_account"])
     credenciais = service_account.Credentials.from_service_account_info(info_credenciais)
-    
-    st.success(f"✅ Credenciais carregadas para o projeto: **{info_credenciais.get('project_id')}**")
+    st.success(f"✅ Credenciais OK! Projeto: **{info_credenciais.get('project_id')}**")
 
 except Exception as e:
-    st.error(f"❌ Erro ao ler secrets: {e}")
+    st.error(f"❌ Erro de Auth: {e}")
     st.stop()
 
-# --- PASSO 2: CONEXÃO COM BIGQUERY ---
-st.write("### 2. Baixando Dados...")
+# --- CONEXÃO ---
+st.write("### 2. Baixando Dados (Modo Seguro)...")
 
 if st.button("🚀 Testar Conexão Agora"):
-    with st.spinner("Conectando ao Google..."):
+    with st.spinner("Conectando via REST API (sem gRPC)..."):
         try:
-            # Passa as credenciais EXPLICITAMENTE
+            # Cliente Padrão
             client = bigquery.Client(credentials=credenciais, project=credenciais.project_id)
             
-            # Query ultra leve
-            query = "SELECT * FROM `basedosdados.br_ibge_populacao.municipio` LIMIT 3"
+            # Query simples
+            query = "SELECT * FROM `basedosdados.br_ibge_populacao.municipio` LIMIT 5"
+            st.info(f"Enviando pedido: `{query}`")
             
-            # ADICIONAMOS TIMEOUT: Se não responder em 15s, ele cancela
             job = client.query(query)
-            result = job.result(timeout=15) # <--- O segredo anti-travamento
-            df = result.to_dataframe()
+            
+            # --- O PULO DO GATO ---
+            # create_bqstorage_client=False -> Força usar HTTPS normal em vez de gRPC
+            # Isso evita o travamento em firewalls de nuvem
+            df = job.to_dataframe(create_bqstorage_client=False)
             
             st.balloons()
-            st.success("🎉 SUCESSO ABSOLUTO! O BigQuery respondeu!")
+            st.success("🎉 SUCESSO! Dados baixados via REST API!")
             st.dataframe(df)
             
         except Exception as e:
             st.error(f"❌ Falha: {e}")
-            st.write("Se o erro mencionar 'db-dtypes', adicione ao requirements.txt!")
+            st.markdown("---")
+            st.warning("Se funcionou agora, o problema era o bloqueio de gRPC na nuvem.")
