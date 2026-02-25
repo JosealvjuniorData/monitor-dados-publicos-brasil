@@ -114,11 +114,25 @@ if not agrupar_brasil:
 else:
     sigla_uf = None
 
-# --- EXTRAÇÃO ---
+# --- FUNÇÃO DE EXTRAÇÃO INTELIGENTE (VERIFICA COLUNAS) ---
 @st.cache_data(ttl=3600)
 def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
     tabela_full = f"basedosdados.{tabela_sql}" if not tabela_sql.startswith("basedosdados.") else tabela_sql
     
+    # Cria o cliente
+    client = bigquery.Client(credentials=credenciais, project=proj_id, location="US")
+    
+    # 1. ESPIÃO DE COLUNAS (Descobre o que existe na tabela)
+    try:
+        table_ref = client.get_table(tabela_full)
+        colunas_existentes = [c.name for c in table_ref.schema]
+    except Exception as e:
+        # Se falhar ao ler o schema, tenta rodar sem filtros (modo arriscado, mas tenta)
+        colunas_existentes = []
+        st.warning(f"Não foi possível ler as colunas da tabela. Tentando extração bruta. Erro: {e}")
+
+    # 2. LÓGICA DE AGRUPAMENTO (Específica para Frota/Caged)
+    # Aqui mantemos hardcoded porque essas tabelas GARANTIDAMENTE têm essas colunas
     if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
         query = f"""
         SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
@@ -129,18 +143,38 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         LIMIT 2000
         """
     else:
+        # 3. QUERY GENÉRICA BLINDADA
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
-        if ano_min: query += f" AND ano >= {ano_min}"
-        if uf: query += f" AND sigla_uf = '{uf}'"
+        
+        # --- FILTRO DE ANO ---
+        # Só filtra se o usuário pediu E a coluna existe
+        if ano_min and 'ano' in colunas_existentes:
+            query += f" AND ano >= {ano_min}"
+        
+        # --- FILTRO DE UF ---
+        # Só filtra se o usuário pediu E a coluna existe
+        if uf and 'sigla_uf' in colunas_existentes:
+            query += f" AND sigla_uf = '{uf}'"
+        
+        # --- ORDENAÇÃO INTELIGENTE ---
+        # Se tiver ano e mes, ordena cronologicamente
+        if 'ano' in colunas_existentes and 'mes' in colunas_existentes:
+            query += " ORDER BY ano DESC, mes DESC"
+        elif 'ano' in colunas_existentes:
+            query += " ORDER BY ano DESC"
+            
+        # Limite de segurança
         query += " LIMIT 5000" 
     
+    # 4. EXECUTAR
     try:
-        client = bigquery.Client(credentials=credenciais, project=proj_id, location="US")
         job = client.query(query)
+        # create_bqstorage_client=False é essencial para evitar travamento
         df = job.to_dataframe(create_bqstorage_client=False)
         return df
     except Exception as e:
-        raise Exception(f"Erro BigQuery: {e}")
+        # Mostra o erro de forma mais amigável
+        raise Exception(f"Erro SQL: {e}")
 
 # --- ÁREA PRINCIPAL ---
 st.title("📚 Monitor de Dados Públicos")
