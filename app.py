@@ -50,26 +50,31 @@ except Exception as e:
     TEM_SWEETVIZ = False
     ERRO_SWEETVIZ = str(e)
 
-# --- FUNÇÃO DE LIMPEZA (ESSENCIAL PARA NÃO TRAVAR) ---
+# --- FUNÇÃO DE LIMPEZA NUCLEAR (CORRIGIDA PARA DBDATE) ---
 def sanitizar_df(df_original):
     """
-    Remove tipos complexos do BigQuery que travam o PyGWalker e Sweetviz.
-    Converte tudo para tipos simples (str, float, int).
+    Converte tipos exóticos do BigQuery (dbdate, dbtime, Decimal) 
+    em tipos nativos do Python que o PyGWalker aceita.
     """
     df = df_original.copy()
     
     for col in df.columns:
-        # 1. Remove Fuso Horário de Datas (Causa erro no Sweetviz)
+        # 1. Se for 'object' (onde o dbdate se esconde), tenta converter para data real
+        if df[col].dtype == 'object':
+            try:
+                # Tenta forçar a conversão para datetime. Se for dbdate, isso resolve.
+                df[col] = pd.to_datetime(df[col])
+            except:
+                # Se falhar (ex: nomes, categorias), garante que é String pura
+                df[col] = df[col].astype(str)
+        
+        # 2. Se for data (nativa ou convertida acima), remove o Fuso Horário
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             df[col] = df[col].dt.tz_localize(None)
             
-        # 2. Converte Objetos genéricos para String (Evita erro de JSON)
-        elif pd.api.types.is_object_dtype(df[col]):
-            df[col] = df[col].astype(str)
-            
-        # 3. Garante que números sejam float ou int nativos (Evita Int64 do BigQuery)
+        # 3. Se for numérico, converte para float (evita Int64 nullable que buga js)
         elif pd.api.types.is_numeric_dtype(df[col]):
-            df[col] = df[col].astype(float) # Float é o mais seguro para gráficos
+            df[col] = df[col].astype(float)
             
     return df
 
@@ -162,6 +167,7 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
     except:
         colunas_existentes = []
 
+    # 2. Lógica Específica
     if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
         query = f"""
         SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
@@ -172,11 +178,11 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         LIMIT 2000
         """
     else:
+        # 3. Lógica Genérica
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
         if ano_min and 'ano' in colunas_existentes: query += f" AND ano >= {ano_min}"
         if uf and 'sigla_uf' in colunas_existentes: query += f" AND sigla_uf = '{uf}'"
         
-        # Ordenação
         if 'ano' in colunas_existentes and 'mes' in colunas_existentes:
             query += " ORDER BY ano DESC, mes DESC"
         elif 'ano' in colunas_existentes:
@@ -201,8 +207,7 @@ if tabela_id:
         with st.spinner("Baixando dados..."):
             try:
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
-                
-                # Tratamento básico de data
+                # Tenta criar data de referência se possível
                 if 'ano' in df.columns and 'mes' in df.columns:
                     try:
                         df['data_referencia'] = pd.to_datetime(df['ano'].astype(str) + '-' + df['mes'].astype(str) + '-01', errors='coerce')
@@ -233,9 +238,8 @@ if tabela_id:
                 try:
                     st.info("💡 Clique no botão verde para abrir em tela cheia.")
                     
-                    # --- AQUI ESTÁ A CORREÇÃO ---
-                    # Sanitizamos o DF antes de passar para o PyGWalker
-                    df_limpo = sanitizar_df(df) 
+                    # --- APLICANDO A VACINA DE DATA ---
+                    df_limpo = sanitizar_df(df)
                     
                     html_pyg = pyg.to_html(df_limpo)
                     st.markdown(criar_link_nova_aba(html_pyg, "Abrir BI em Tela Cheia", "bi_analise.html"), unsafe_allow_html=True)
@@ -253,8 +257,7 @@ if tabela_id:
              if TEM_SWEETVIZ:
                 if st.button("Gerar Relatório (IA)"):
                     with st.spinner("Analisando dados..."):
-                        # --- AQUI ESTÁ A CORREÇÃO ---
-                        # Sanitizamos o DF antes de passar para o Sweetviz
+                        # --- APLICANDO A VACINA DE DATA ---
                         df_limpo = sanitizar_df(df)
                         
                         analise = sv.analyze(df_limpo)
