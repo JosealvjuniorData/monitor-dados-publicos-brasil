@@ -155,6 +155,7 @@ st.sidebar.markdown(
         <a href="mailto:josealvjunior@gmail.com" style="text-decoration: none; color: #0068c9; font-weight: bold;">
             josealvjunior@gmail.com
         </a>
+        <br>
     </div>
     """, 
     unsafe_allow_html=True
