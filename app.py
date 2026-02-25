@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 23 11:17:24 2026
+Created on Mon Feb 23 10:17:24 2026
 
 @author: josej
 """
@@ -23,7 +23,7 @@ st.set_page_config(layout="wide", page_title="Monitor de Dados Públicos", page_
 if not hasattr(np, 'VisibleDeprecationWarning'):
     np.VisibleDeprecationWarning = UserWarning
 
-# --- IMPORTAÇÃO BLINDADA (PyGWalker & Sweetviz) ---
+# --- IMPORTAÇÃO BLINDADA ---
 try:
     import pygwalker as pyg
     from pygwalker.api.streamlit import StreamlitRenderer
@@ -32,14 +32,12 @@ except ImportError:
     TEM_PYGWALKER = False
 
 try:
-    # Tenta importar pkg_resources para compatibilidade com Sweetviz
     import pkg_resources 
     import sweetviz as sv
     TEM_SWEETVIZ = True
     ERRO_SWEETVIZ = None
 except ImportError:
     try:
-        # Tentativa secundária forçando setuptools
         import setuptools
         import pkg_resources
         import sweetviz as sv
@@ -52,12 +50,31 @@ except Exception as e:
     TEM_SWEETVIZ = False
     ERRO_SWEETVIZ = str(e)
 
+# --- FUNÇÃO DE LIMPEZA (ESSENCIAL PARA NÃO TRAVAR) ---
+def sanitizar_df(df_original):
+    """
+    Remove tipos complexos do BigQuery que travam o PyGWalker e Sweetviz.
+    Converte tudo para tipos simples (str, float, int).
+    """
+    df = df_original.copy()
+    
+    for col in df.columns:
+        # 1. Remove Fuso Horário de Datas (Causa erro no Sweetviz)
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].dt.tz_localize(None)
+            
+        # 2. Converte Objetos genéricos para String (Evita erro de JSON)
+        elif pd.api.types.is_object_dtype(df[col]):
+            df[col] = df[col].astype(str)
+            
+        # 3. Garante que números sejam float ou int nativos (Evita Int64 do BigQuery)
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            df[col] = df[col].astype(float) # Float é o mais seguro para gráficos
+            
+    return df
+
 # --- FUNÇÃO MÁGICA: LINK PARA NOVA ABA ---
 def criar_link_nova_aba(html_content, titulo_botao, nome_arquivo):
-    """
-    Empacota o HTML inteiro dentro de um link para abrir em nova aba.
-    Isso simula o comportamento 'show()' local na nuvem.
-    """
     b64 = base64.b64encode(html_content.encode()).decode()
     href = f'''
     <a href="data:text/html;base64,{b64}" download="{nome_arquivo}" target="_blank" 
@@ -132,20 +149,19 @@ if not agrupar_brasil:
 else:
     sigla_uf = None
 
-# --- EXTRAÇÃO INTELIGENTE (SEM ERROS DE COLUNA) ---
+# --- EXTRAÇÃO INTELIGENTE ---
 @st.cache_data(ttl=3600)
 def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
     tabela_full = f"basedosdados.{tabela_sql}" if not tabela_sql.startswith("basedosdados.") else tabela_sql
     client = bigquery.Client(credentials=credenciais, project=proj_id, location="US")
     
-    # 1. Espião de colunas: Verifica o que existe antes de filtrar
+    # 1. Espião de colunas
     try:
         table_ref = client.get_table(tabela_full)
         colunas_existentes = [c.name for c in table_ref.schema]
     except:
         colunas_existentes = []
 
-    # 2. Lógica Específica (Frota/Caged)
     if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
         query = f"""
         SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
@@ -156,17 +172,11 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         LIMIT 2000
         """
     else:
-        # 3. Lógica Genérica Inteligente
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
+        if ano_min and 'ano' in colunas_existentes: query += f" AND ano >= {ano_min}"
+        if uf and 'sigla_uf' in colunas_existentes: query += f" AND sigla_uf = '{uf}'"
         
-        # Só aplica filtro se a coluna existir
-        if ano_min and 'ano' in colunas_existentes: 
-            query += f" AND ano >= {ano_min}"
-        
-        if uf and 'sigla_uf' in colunas_existentes: 
-            query += f" AND sigla_uf = '{uf}'"
-            
-        # Ordenação automática se possível
+        # Ordenação
         if 'ano' in colunas_existentes and 'mes' in colunas_existentes:
             query += " ORDER BY ano DESC, mes DESC"
         elif 'ano' in colunas_existentes:
@@ -176,7 +186,6 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
     
     try:
         job = client.query(query)
-        # Importante: create_bqstorage_client=False evita travamento na nuvem
         df = job.to_dataframe(create_bqstorage_client=False)
         return df
     except Exception as e:
@@ -189,11 +198,11 @@ if tabela_id:
     st.write(f"### 📂 Base: **{tabela_nome}**")
     
     if st.button("🚀 Carregar Dados", type="primary"):
-        with st.spinner("Baixando dados do Google BigQuery..."):
+        with st.spinner("Baixando dados..."):
             try:
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
                 
-                # Tratamento de Data para Gráficos
+                # Tratamento básico de data
                 if 'ano' in df.columns and 'mes' in df.columns:
                     try:
                         df['data_referencia'] = pd.to_datetime(df['ano'].astype(str) + '-' + df['mes'].astype(str) + '-01', errors='coerce')
@@ -222,24 +231,19 @@ if tabela_id:
         elif escolha == "🎨 BI Self-Service":
             if TEM_PYGWALKER:
                 try:
-                    st.info("💡 Clique no botão abaixo para uma experiência de tela cheia (igual Desktop).")
+                    st.info("💡 Clique no botão verde para abrir em tela cheia.")
                     
-                    # 1. BOTÃO VERDE DE "NOVA ABA"
-                    # Gera o HTML completo do PyGWalker para download/abertura
-                    html_pyg = pyg.to_html(df)
+                    # --- AQUI ESTÁ A CORREÇÃO ---
+                    # Sanitizamos o DF antes de passar para o PyGWalker
+                    df_limpo = sanitizar_df(df) 
+                    
+                    html_pyg = pyg.to_html(df_limpo)
                     st.markdown(criar_link_nova_aba(html_pyg, "Abrir BI em Tela Cheia", "bi_analise.html"), unsafe_allow_html=True)
                     
                     st.write("---")
-                    st.write("**Ou use a versão embarcada abaixo:**")
+                    st.write("**Versão Embarcada:**")
 
-                    # 2. VERSÃO EMBARCADA
-                    df_safe = df.copy()
-                    for col in df_safe.columns:
-                        if df_safe[col].dtype == 'object':
-                            df_safe[col] = df_safe[col].astype(str)
-                    
-                    # StreamlitRenderer é essencial para não dar tela branca
-                    renderer = StreamlitRenderer(df_safe, spec="./gw_config.json", spec_io_mode="RW")
+                    renderer = StreamlitRenderer(df_limpo, spec="./gw_config.json", spec_io_mode="RW")
                     renderer.explorer()
                     
                 except Exception as e:
@@ -248,25 +252,21 @@ if tabela_id:
         elif escolha == "🍭 Relatório Automático":
              if TEM_SWEETVIZ:
                 if st.button("Gerar Relatório (IA)"):
-                    with st.spinner("A Inteligência Artificial está analisando os dados..."):
-                        # Analisa
-                        analise = sv.analyze(df)
+                    with st.spinner("Analisando dados..."):
+                        # --- AQUI ESTÁ A CORREÇÃO ---
+                        # Sanitizamos o DF antes de passar para o Sweetviz
+                        df_limpo = sanitizar_df(df)
+                        
+                        analise = sv.analyze(df_limpo)
                         analise.show_html("relatorio.html", open_browser=False)
                         
-                        # Lê o arquivo gerado
                         with open("relatorio.html", 'r', encoding='utf-8') as f:
                             html_content = f.read()
                         
                         st.success("Relatório pronto!")
-                        
-                        # 1. BOTÃO VERDE DE "NOVA ABA"
                         st.markdown(criar_link_nova_aba(html_content, "Abrir Relatório Completo", "relatorio_ia.html"), unsafe_allow_html=True)
-                        
                         st.write("---")
-                        st.write("**Prévia do Relatório:**")
-                        
-                        # 2. VERSÃO EMBARCADA
                         components.html(html_content, height=800, scrolling=True)
 
 else:
-    st.info("👈 Selecione uma base no menu lateral para começar.")
+    st.info("👈 Selecione uma base no menu lateral.")
