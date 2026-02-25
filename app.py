@@ -10,6 +10,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import sys # <--- NOVO: Para ver a versão do Python
 import streamlit.components.v1 as components 
 import numpy as np 
 from google.cloud import bigquery
@@ -19,23 +20,35 @@ from google.oauth2 import service_account
 if not hasattr(np, 'VisibleDeprecationWarning'):
     np.VisibleDeprecationWarning = UserWarning
 
-# --- IMPORTAÇÃO BLINDADA (COM DEBUG) ---
-# Tenta importar PyGWalker com o Renderizador Especial
+# --- IMPORTAÇÃO BLINDADA (COM DEBUG DE VERSÃO) ---
 try:
     import pygwalker as pyg
-    from pygwalker.api.streamlit import StreamlitRenderer # <--- O SEGREDO DA TELA BRANCA
+    from pygwalker.api.streamlit import StreamlitRenderer
     TEM_PYGWALKER = True
-except ImportError as e:
+except ImportError:
     TEM_PYGWALKER = False
-    ERRO_PYG = str(e)
 
-# Tenta importar Sweetviz e avisa se falhar
+# Tenta importar Sweetviz com "ajudinha" para o setuptools
 try:
+    # Tenta importar o módulo problemático explicitamente antes
+    import pkg_resources 
     import sweetviz as sv
     TEM_SWEETVIZ = True
+    ERRO_SWEETVIZ = None
+except ImportError:
+    # Se falhar, tenta importar setuptools para ver se ajuda
+    try:
+        import setuptools
+        import pkg_resources
+        import sweetviz as sv
+        TEM_SWEETVIZ = True
+        ERRO_SWEETVIZ = None
+    except Exception as e:
+        TEM_SWEETVIZ = False
+        ERRO_SWEETVIZ = str(e)
 except Exception as e:
     TEM_SWEETVIZ = False
-    ERRO_SWEETVIZ = str(e) # Guarda o erro para mostrar depois
+    ERRO_SWEETVIZ = str(e)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Monitor de Dados Públicos", page_icon="📊")
@@ -67,11 +80,11 @@ catalogo_atual = carregar_catalogo()
 
 # --- BARRA LATERAL ---
 st.sidebar.title("⚙️ Configurações")
-st.sidebar.success("✅ Conexão Google: OK")
+# ADICIONE ESTA LINHA ABAIXO:
+st.sidebar.caption(f"🐍 Python Rodando: {sys.version.split()[0]}") 
 
-# Mostra erros de biblioteca se existirem (Isso explica por que o botão sumiu)
 if not TEM_SWEETVIZ:
-    st.sidebar.warning(f"⚠️ Aviso: Sweetviz não carregou.\nErro: {ERRO_SWEETVIZ}")
+    st.sidebar.warning(f"⚠️ Erro Sweetviz: {ERRO_SWEETVIZ}")
 
 if not catalogo_atual:
     st.sidebar.warning("⚠️ Catálogo não encontrado.")
