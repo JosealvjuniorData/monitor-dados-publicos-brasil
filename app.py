@@ -50,32 +50,45 @@ except Exception as e:
     TEM_SWEETVIZ = False
     ERRO_SWEETVIZ = str(e)
 
-# --- FUNÇÃO DE LIMPEZA NUCLEAR (CORRIGIDA PARA DBDATE) ---
+# --- FUNÇÃO DE LIMPEZA 'BLINDADA' ---
 def sanitizar_df(df_original):
     """
-    Converte tipos exóticos do BigQuery (dbdate, dbtime, Decimal) 
-    em tipos nativos do Python que o PyGWalker aceita.
+    Remove tipos complexos do BigQuery.
+    Estratégia: Converte tipos desconhecidos para STRING ou FLOAT.
     """
     df = df_original.copy()
     
     for col in df.columns:
-        # 1. Se for 'object' (onde o dbdate se esconde), tenta converter para data real
-        if df[col].dtype == 'object':
-            try:
-                # Tenta forçar a conversão para datetime. Se for dbdate, isso resolve.
-                df[col] = pd.to_datetime(df[col])
-            except:
-                # Se falhar (ex: nomes, categorias), garante que é String pura
-                df[col] = df[col].astype(str)
+        # Verifica o tipo da coluna
+        dtype_str = str(df[col].dtype)
         
-        # 2. Se for data (nativa ou convertida acima), remove o Fuso Horário
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].dt.tz_localize(None)
-            
-        # 3. Se for numérico, converte para float (evita Int64 nullable que buga js)
-        elif pd.api.types.is_numeric_dtype(df[col]):
+        # 1. Numéricos viram Float (seguro)
+        if pd.api.types.is_numeric_dtype(df[col]):
             df[col] = df[col].astype(float)
             
+        # 2. Se for datetime OFICIAL do Pandas, apenas tira o fuso
+        elif pd.api.types.is_datetime64_any_dtype(df[col]):
+             df[col] = df[col].dt.tz_localize(None)
+             
+        # 3. Se for 'dbdate', 'object' ou qualquer coisa estranha
+        else:
+            # Tenta converter para datetime primeiro
+            try:
+                col_converted = pd.to_datetime(df[col], errors='coerce')
+                # Se a conversão funcionou e não gerou tudo NaT
+                if not col_converted.isna().all():
+                     df[col] = col_converted
+                     df[col] = df[col].dt.tz_localize(None)
+                else:
+                     # Se falhar, VIRA TEXTO (String)
+                     # PyGWalker aceita datas como texto ('2023-01-01') sem travar
+                     df[col] = df[col].astype(str)
+                     df[col] = df[col].replace({'nan': None, 'NaT': None, '<NA>': None, 'None': None})
+            except:
+                # Fallback final: Texto puro
+                df[col] = df[col].astype(str)
+                df[col] = df[col].replace({'nan': None, 'NaT': None, '<NA>': None, 'None': None})
+
     return df
 
 # --- FUNÇÃO MÁGICA: LINK PARA NOVA ABA ---
@@ -207,7 +220,7 @@ if tabela_id:
         with st.spinner("Baixando dados..."):
             try:
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
-                # Tenta criar data de referência se possível
+                # Tenta criar data de referência
                 if 'ano' in df.columns and 'mes' in df.columns:
                     try:
                         df['data_referencia'] = pd.to_datetime(df['ano'].astype(str) + '-' + df['mes'].astype(str) + '-01', errors='coerce')
@@ -238,7 +251,7 @@ if tabela_id:
                 try:
                     st.info("💡 Clique no botão verde para abrir em tela cheia.")
                     
-                    # --- APLICANDO A VACINA DE DATA ---
+                    # --- APLICA A LIMPEZA ANTES DE TUDO ---
                     df_limpo = sanitizar_df(df)
                     
                     html_pyg = pyg.to_html(df_limpo)
@@ -257,7 +270,7 @@ if tabela_id:
              if TEM_SWEETVIZ:
                 if st.button("Gerar Relatório (IA)"):
                     with st.spinner("Analisando dados..."):
-                        # --- APLICANDO A VACINA DE DATA ---
+                        # --- APLICA A LIMPEZA ANTES DE TUDO ---
                         df_limpo = sanitizar_df(df)
                         
                         analise = sv.analyze(df_limpo)
