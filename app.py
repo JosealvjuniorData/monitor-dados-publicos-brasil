@@ -155,12 +155,12 @@ st.sidebar.markdown(
         <a href="mailto:josealvjunior@gmail.com" style="text-decoration: none; color: #0068c9; font-weight: bold;">
             josealvjunior@gmail.com
         </a>
-        <br>
     </div>
+    <br>
     """, 
     unsafe_allow_html=True
 )
-st.sidebar.caption("<br>" f"🐍 Python: {sys.version.split()[0]}") 
+st.sidebar.caption(f"🐍 Python: {sys.version.split()[0]}") 
 
 if not catalogo_atual:
     st.sidebar.warning("⚠️ Catálogo vazio.")
