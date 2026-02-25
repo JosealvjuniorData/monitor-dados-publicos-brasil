@@ -167,6 +167,28 @@ if not agrupar_brasil:
 else:
     sigla_uf = None
 
+# --- NOVOS AVISOS DA BARRA LATERAL ---
+st.sidebar.divider()
+st.sidebar.markdown("### ℹ️ Sobre")
+st.sidebar.info(
+    "**Fonte de Dados:** Este painel utiliza a camada gratuita da 'Base dos Dados'. "
+    "Alguns indicadores podem apresentar atraso de 3 a 12 meses em relação à data atual "
+    "devido às políticas de acesso da API."
+)
+st.sidebar.markdown(
+    """
+    <div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #d6d6d6;">
+        📧 <strong>Tem sugestão de nova base?</strong><br>
+        Entre em contato:<br>
+        <a href="mailto:josealvjunior@gmail.com" style="text-decoration: none; color: #0068c9; font-weight: bold;">
+            josealvjunior@gmail.com
+        </a>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+
 # --- EXTRAÇÃO INTELIGENTE ---
 @st.cache_data(ttl=3600)
 def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
