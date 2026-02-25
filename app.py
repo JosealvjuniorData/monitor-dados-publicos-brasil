@@ -159,7 +159,11 @@ st.sidebar.markdown(
     """, 
     unsafe_allow_html=True
 )
-st.sidebar.caption(f"<br>🐍 Python: {sys.version.split()[0]}") 
+st.sidebar.caption("""
+                   <div
+                   f"🐍 Python: {sys.version.split()[0]}"
+                   </div>
+                   """) 
 
 if not catalogo_atual:
     st.sidebar.warning("⚠️ Catálogo vazio.")
