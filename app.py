@@ -238,9 +238,13 @@ if tabela_id:
     st.write(f"### 📂 Base: **{tabela_nome}**")
     
     if st.button("🚀 Carregar Dados", type="primary"):
-        with st.spinner("Baixando dados..."):
+        with st.spinner("Baixando dados da nuvem (isso pode levar alguns segundos)..."):
             try:
+                # Aqui o sistema TENTA extrair os dados normalmente
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
+                
+                # Se der certo, ele segue o fluxo normal (mantenha o código que você já tem aqui)
+                st.success(f"✅ Dados carregados com sucesso! ({len(df)} linhas)")
                 # Tenta criar data de referência
                 if 'ano' in df.columns and 'mes' in df.columns:
                     try:
@@ -251,7 +255,18 @@ if tabela_id:
                 st.session_state['df_analise'] = df
                 st.success(f"Sucesso! {len(df)} linhas carregadas.")
             except Exception as e:
-                st.error(f"Erro ao carregar: {e}")
+                # Se o código "quebrar", ele cai aqui no EXCEPT
+                erro_str = str(e)
+                
+                # Verifica se o erro foi o famoso "404 Not Found" da Base dos Dados
+                if "Not found" in erro_str or "404" in erro_str:
+                    st.warning(f"⚠️ **Atenção:** A tabela `{tabela_id}` não está mais disponível neste endereço.")
+                    st.info("💡 **O que aconteceu?** A Base dos Dados pode ter atualizado ou renomeado esta tabela. "
+                            "Nossa equipe técnica (seu robô no GitHub 🤖) já foi notificada para corrigir este link "
+                            "na próxima atualização. Por favor, tente outra base do catálogo!")
+                else:
+                    # Se for qualquer outro erro (ex: internet caiu, limite de cota), mostra o erro real
+                    st.error(f"❌ Ocorreu um erro inesperado ao conectar com a Base dos Dados: {erro_str}")
                 
     if 'df_analise' in st.session_state:
         df = st.session_state['df_analise']

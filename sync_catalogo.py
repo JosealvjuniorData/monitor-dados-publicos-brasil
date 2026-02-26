@@ -4,71 +4,72 @@ Created on Mon Feb 23 11:17:24 2026
 
 @author: josej
 """
+# -*- coding: utf-8 -*-
 import os
-from google.cloud import bigquery
 import json
+from google.cloud import bigquery
+import sys
 
-# --- AUTENTICAÇÃO ---
-# Esta linha aponta para o seu "crachá" do Google Cloud
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
+# --- CONFIGURAÇÃO PARA O GITHUB ACTIONS ---
+# O GitHub Actions vai gerar o 'credenciais.json' temporariamente. 
+# Essa linha garante que o BigQuery saiba onde procurar.
+if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
 
-# Seu ID de projeto do Google Cloud
-PROJECT_ID = "paineldadosabertos"
+PROJECT_ID = "paineldadosabertos" # Mantivemos o seu Project ID original
 
-def sincronizar():
-    print("🔄 Iniciando sincronização via Google Client Library...")
+def validar_catalogo():
+    print("🤖 Iniciando Robô de Validação do Catálogo...")
     
-    # O cliente agora vai encontrar o arquivo JSON automaticamente
-    client = bigquery.Client(project=PROJECT_ID)
-    
-    datasets_alvo = [
-        'br_ibge_ipca', 
-        'br_ibge_pib', 
-        'br_me_caged', 
-        'br_ms_sim', 
-        'br_inep_censo_escolar',
-        'br_ibge_populacao',
-        'br_tse_eleicoes'
-    ]
-    
-    novo_catalogo = {}
-    
+    # 1. Tenta conectar no BigQuery
     try:
-        for ds_id in datasets_alvo:
-            print(f"📂 Acessando dataset: {ds_id}...")
-            dataset_ref = bigquery.DatasetReference("basedosdados", ds_id)
-            tabelas = client.list_tables(dataset_ref)
-            
-            prefixo = ds_id.split('_')[1].upper() if '_' in ds_id else "GERAL"
-            mapa_temas = {
-                "IBGE": "Economia e Sociedade (IBGE)",
-                "ME": "Trabalho e Emprego",
-                "MS": "Saúde Pública",
-                "INEP": "Educação",
-                "TSE": "Política e Eleições"
-            }
-            tema = mapa_temas.get(prefixo, f"Tema: {prefixo}")
-            
-            if tema not in novo_catalogo:
-                novo_catalogo[tema] = {}
-            if ds_id not in novo_catalogo[tema]:
-                novo_catalogo[tema][ds_id] = {}
-            
-            for tabela in tabelas:
-                tab_id = tabela.table_id
-                if any(x in tab_id for x in ['dicionario', 'auxiliar', 'staging', 'schema']):
-                    continue
-                
-                nome_amigavel = tab_id.replace("_", " ").title()
-                novo_catalogo[tema][ds_id][nome_amigavel] = f"basedosdados.{ds_id}.{tab_id}"
-        
-        with open("catalogo_mvp.json", "w", encoding="utf-8") as f:
-            json.dump(novo_catalogo, f, ensure_ascii=False, indent=4)
-            
-        print("\n✅ Sucesso! O arquivo catalogo_mvp.json foi criado com as tabelas reais.")
-        
+        client = bigquery.Client(project=PROJECT_ID)
+        print("✅ Conexão com BigQuery estabelecida.")
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f"❌ Erro Crítico de Autenticação: {e}")
+        sys.exit(1) # Para o robô
+
+    # 2. Abre o catálogo atual
+    try:
+        with open("catalogo_mvp.json", "r", encoding="utf-8") as f:
+            catalogo = json.load(f)
+    except FileNotFoundError:
+        print("❌ Erro: Arquivo 'catalogo_mvp.json' não encontrado na pasta.")
+        sys.exit(1)
+
+    print("\n🔍 Escaneando links das tabelas...")
+    erros = 0
+    tabelas_quebradas = []
+
+    # 3. Testa link por link
+    for tema, categorias in catalogo.items():
+        for categoria, tabelas in categorias.items():
+            for nome_tabela, id_tabela in tabelas.items():
+                
+                # Garante que o ID tem o prefixo correto
+                full_id = id_tabela if id_tabela.startswith("basedosdados.") else f"basedosdados.{id_tabela}"
+                
+                try:
+                    # Tenta acessar os metadados da tabela na nuvem
+                    client.get_table(full_id)
+                    print(f"  [OK] {nome_tabela}")
+                except Exception:
+                    print(f"  [🚨 ERRO] {nome_tabela} -> ID não encontrado: {full_id}")
+                    tabelas_quebradas.append(f"{nome_tabela} ({full_id})")
+                    erros += 1
+
+    # 4. Relatório Final
+    print(f"\n🏁 Fim da varredura. Total de links testados e quebrados: {erros}")
+    
+    # Se houver erros, forçamos o script a "falhar" (Exit 1). 
+    # Isso faz o GitHub Actions enviar um e-mail de alerta para você!
+    if erros > 0:
+        print("\n⚠️ ALERTA: As seguintes tabelas precisam ter seus IDs atualizados no JSON:")
+        for t in tabelas_quebradas:
+            print(f" - {t}")
+        sys.exit(1) 
+    else:
+        print("✨ Tudo perfeito! Seu catálogo está 100% saudável.")
 
 if __name__ == "__main__":
-    sincronizar()
+    validar_catalogo()
