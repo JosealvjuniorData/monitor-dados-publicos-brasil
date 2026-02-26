@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Feb 26 09:30:14 2026
-
-@author: josej
-"""
-
-# .github/workflows/atualiza_catalogo.yml
 name: Validador do Catálogo de Dados
 
 on:
@@ -25,7 +17,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      # ESSA É A PARTE NOVA: O GitHub cria o arquivo usando o segredo!
       - name: Criar arquivo de credenciais
         run: |
           echo '${{ secrets.GCP_CREDENTIALS }}' > credenciais.json
