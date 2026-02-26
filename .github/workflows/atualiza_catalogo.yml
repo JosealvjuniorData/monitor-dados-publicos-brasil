@@ -6,15 +6,15 @@ Created on Thu Feb 26 09:30:14 2026
 """
 
 # .github/workflows/atualiza_catalogo.yml
-name: Atualizador Automático do Catálogo
+name: Validador do Catálogo de Dados
 
 on:
   schedule:
     - cron: '0 3 * * 1' # Roda toda segunda-feira às 3h da manhã
-  workflow_dispatch: # Permite rodar manualmente com um botão no GitHub
+  workflow_dispatch: # Permite rodar manualmente apertando um botão no site
 
 jobs:
-  atualizar-json:
+  validar-links:
     runs-on: ubuntu-latest
     steps:
       - name: Baixar o código
@@ -25,14 +25,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Rodar script de atualização
+      # ESSA É A PARTE NOVA: O GitHub cria o arquivo usando o segredo!
+      - name: Criar arquivo de credenciais
         run: |
-          pip install google-cloud-bigquery
-          python script_atualiza_json.py # O robô que ajusta os IDs
-        
-      - name: Fazer o Commit e Push (se houver mudanças)
-        run: |
-          git config --global user.name "Robô de Dados"
-          git config --global user.email "robo@seuprojeto.com"
-          git commit -am "🤖 Atualização automática de IDs quebrados" || echo "Nenhuma mudança necessária"
-          git push
+          echo '${{ secrets.GCP_CREDENTIALS }}' > credenciais.json
+
+      - name: Instalar dependência do BigQuery
+        run: pip install google-cloud-bigquery
+
+      - name: Rodar o Robô Validador
+        run: python sync_catalogo.py
