@@ -21,6 +21,7 @@ A aplicação conecta diretamente ao *Data Lakehouse* da [**Base dos Dados**](ht
 
 
 ### 🛠️ Tecnologias e Ferramentas
+
 * **Linguagem:** Python 3.11
 * **Engenharia de Dados:** Google BigQuery (SQL), Pandas, `basedosdados`
 * **Frontend & UX:** Streamlit
@@ -29,7 +30,8 @@ A aplicação conecta diretamente ao *Data Lakehouse* da [**Base dos Dados**](ht
 
 ---
 
-###🚀 Desafios Superados (A Jornada Técnica)
+### 🚀 Desafios Superados (A Jornada Técnica)
+
 Para chegar a este produto estável, superamos diversos desafios de infraestrutura e engenharia de dados que surgiram durante o desenvolvimento:
 
 Sanitização "Nuclear" de Dados: Implementamos um extrator que limpa tipos de dados exóticos (como o dbdate do BigQuery) que costumam travar bibliotecas de visualização como o PyGWalker.
@@ -51,7 +53,8 @@ UX Desktop-to-Web: Desenvolvemos um sistema de links em Base64 que permite abrir
 5.  **Relatórios IA:** Geração automática de HTML com correlações, distribuição e análise de dados.
 
 ---
-##📖 Como Expandir o Catálogo (Guia Prático)
+## 📖 Como Expandir o Catálogo (Guia Prático)
+
 O projeto foi desenhado para ser modular. Para adicionar um novo Tema, Dataset ou Tabela, você não precisa mexer no código Python, basta editar o arquivo catalogo_mvp.json.
 
 Onde encontrar o ID Técnico?
