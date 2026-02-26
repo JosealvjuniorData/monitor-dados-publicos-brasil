@@ -25,8 +25,8 @@ catalogo_novo = {
             "IGP-M (Aluguéis - FGV)": "basedosdados.br_fgv_igp.igp_m_mes"
         },
         "Taxas e Moedas (BCB)": {
-            "Taxa Selic (Meta e Real)": "basedosdados.br_bcb_taxa_selic.taxa_selic_apurada",
-            "Dólar e Câmbio": "basedosdados.br_bcb_taxa_cambio.taxa_cambio_mensal"
+            "Taxa Selic (Meta e Real)": "basedosdados.br_bcb_taxa_selic.taxa_selic",
+            "Dólar e Câmbio": "basedodados.br_bcb_taxa_cambio.taxa_cambio"
         },
         "PIB e Riqueza (IBGE)": {
             "PIB por Município (Série Completa)": "basedosdados.br_ibge_pib.municipio",
