@@ -1,70 +1,63 @@
 {
-    "1. Economia e Finanças": {
-        "Índices de Inflação (IBGE/FGV)": {
-            "IPCA - Nacional (Oficial)": "basedosdados.br_ibge_ipca.mes_brasil",
-            "IPCA - Regional (Capitais)": "basedosdados.br_ibge_ipca.mes_rm",
-            "IPCA-15 (Prévia Quinzenal)": "basedosdados.br_ibge_ipca15.mes_brasil",
-            "INPC (Custo de Vida - Baixa Renda)": "basedosdados.br_ibge_inpc.mes_brasil",
-            "IGP-M (Aluguéis - FGV)": "basedosdados.br_fgv_igp.igp_m_mes"
+    "Economia e Sociedade (IBGE)": {
+        "IBGE - Censo Demográfico": {
+            "População por Município (Série Histórica)": "br_ibge_populacao.municipio",
+            "PIB por Município": "br_ibge_pib.municipio"
         },
-        "Taxas e Moedas (BCB)": {
-            "Taxa Selic (Meta e Real)": "basedosdados.br_bcb_taxa_selic.taxa_selic_apurada",
-            "Dólar e Câmbio": "basedosdados.br_bcb_taxa_cambio.taxa_cambio_mensal"
+        "IBGE - Índices de Preços": {
+            "IPCA (Inflação) - Mesal": "br_ibge_ipca.mes_brasil"
+        }
+    },
+    "Trabalho e Emprego": {
+        "Ministério da Economia (CAGED)": {
+            "Novo Caged - Movimentações (Microdados)": "br_me_caged.microdados_movimentacao",
+            "Novo Caged - Saldos por Município": "br_me_caged.microdados_movimentacao_fora_prazo"
         },
-        "PIB e Riqueza (IBGE)": {
-            "PIB por Município (Série Completa)": "basedosdados.br_ibge_pib.municipio",
-            "PIB por Estado (UF)": "basedosdados.br_ibge_pib.uf"
+        "RAIS - Vínculos": {
+            "Vínculos Empregatícios (Amostra 1%)": "br_me_rais.microdados_vinculos"
         }
     },
-    "2. População e Sociedade": {
-        "Censo e Estimativas (IBGE)": {
-            "População por Município (Censo/Estimativa)": "basedosdados.br_ibge_populacao.municipio",
-            "Perfil dos Domicílios (Censo 2010/2022)": "basedosdados.br_ibge_censo_demografico.setor_censitario_basico_2010"
+    "Saúde Pública": {
+        "Ministério da Saúde (DATASUS)": {
+            "Mortalidade (SIM) - Causas de Óbito": "br_ms_sim.microdados",
+            "Nascimentos (SINASC)": "br_ms_sinasc.microdados",
+            "Vacinação COVID-19 (Microdados)": "br_ms_vacinacao_covid19.microdados_vacinacao"
         }
     },
-    "3. Trabalho e Emprego": {
-        "CAGED (Emprego Formal)": {
-            "Novo Caged - Movimentações (Admissão/Demissão)": "basedosdados.br_me_caged.microdados_movimentacao",
-            "Novo Caged - Saldo por Município": "basedosdados.br_me_caged.microdados_movimentacao_fora_prazo"
+    "Segurança Pública": {
+        "Fórum Brasileiro de Segurança": {
+            "Estatísticas de Segurança (Município)": "br_fbsp_seguranca.municipio"
         },
-        "RAIS (Vínculos Anuais)": {
-            "Vínculos Empregatícios": "basedosdados.br_me_rais.microdados_vinculos"
+        "ISP (Rio de Janeiro)": {
+            "Crimes por Delegacia (RJ)": "br_isp_estatisticas_seguranca.taxa_evolucao_mensal_uf"
         }
     },
-    "4. Saúde Pública": {
-        "Mortalidade e Nascimentos (DATASUS)": {
-            "SIM - Mortalidade (Causas de Óbito)": "basedosdados.br_ms_sim.microdados",
-            "SINASC - Nascimentos": "basedosdados.br_ms_sinasc.microdados"
+    "Meio Ambiente e Clima": {
+        "INPE (Desmatamento)": {
+            "Desmatamento Prodes (Amazônia)": "br_inpe_prodes.desmatamento_municipio",
+            "Focos de Queimadas": "br_inpe_queimadas.microdados"
         },
-        "Epidemiologia": {
-            "Casos de COVID-19 (Histórico)": "basedosdados.br_ms_vacinacao_covid19.microdados_vacinacao"
+        "SEEG (Emissões)": {
+            "Emissões de Gases (Município)": "br_seeg_emissoes.municipio"
         }
     },
-    "5. Segurança Pública": {
-        "Dados Nacionais": {
-            "Estatísticas de Segurança (Município)": "basedosdados.br_fbsp_seguranca.municipio"
-        },
-        "Dados Estaduais (Exemplos)": {
-            "Crimes RJ (ISP)": "basedosdados.br_isp_estatisticas_seguranca.taxa_evolucao_mensal_uf",
-            "Vítimas SP": "basedosdados.br_sp_ssp_seguranca.ocorrencias_mensais_municipio"
-        }
-    },
-    "6. Meio Ambiente": {
-        "Desmatamento e Clima": {
-            "Desmatamento PRODES (Amazônia)": "basedosdados.br_inpe_prodes.desmatamento_municipio",
-            "Focos de Calor (Queimadas - INPE)": "basedosdados.br_inpe_queimadas.microdados",
-            "Emissões de Gases (SEEG)": "basedosdados.br_seeg_emissoes.municipio"
-        }
-    },
-    "7. Transporte e Frota": {
+    "Transporte e Veículos": {
         "DENATRAN": {
-            "Frota de Veículos (Município)": "basedosdados.br_denatran_frota.municipio_tipo"
+            "Frota de Veículos por Município": "br_denatran_frota.municipio_tipo"
         }
     },
-    "8. Eleições e Política": {
-        "TSE": {
-            "Bens dos Candidatos": "basedosdados.br_tse_eleicoes.bens_candidato",
-            "Votação por Seção": "basedosdados.br_tse_eleicoes.resultados_partido_municipio"
+    "Política e Eleições": {
+        "TSE (Eleições)": {
+            "Bens dos Candidatos": "br_tse_eleicoes.bens_candidato",
+            "Resultados por Seção Eleitoral": "br_tse_eleicoes.resultados_partido_municipio"
+        },
+        "Câmara dos Deputados": {
+            "Gastos da Cota Parlamentar": "br_camara_dados_abertos.cota_parlamentar"
+        }
+    },
+    "Energia e Infraestrutura": {
+        "ANEEL": {
+            "Tarifas de Energia (Residencial)": "br_aneel_tarifas.distribuidoras_residenciais"
         }
     }
 }
