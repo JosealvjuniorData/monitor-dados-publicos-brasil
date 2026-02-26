@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 26 09:30:14 2026
+
+@author: josej
+"""
+
+# .github/workflows/atualiza_catalogo.yml
+name: Atualizador Automático do Catálogo
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Roda toda segunda-feira às 3h da manhã
+  workflow_dispatch: # Permite rodar manualmente com um botão no GitHub
+
+jobs:
+  atualizar-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Rodar script de atualização
+        run: |
+          pip install google-cloud-bigquery
+          python script_atualiza_json.py # O robô que ajusta os IDs
+        
+      - name: Fazer o Commit e Push (se houver mudanças)
+        run: |
+          git config --global user.name "Robô de Dados"
+          git config --global user.email "robo@seuprojeto.com"
+          git commit -am "🤖 Atualização automática de IDs quebrados" || echo "Nenhuma mudança necessária"
+          git push
