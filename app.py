@@ -184,7 +184,7 @@ ano_minimo = st.sidebar.number_input("Ano inicial:", min_value=1990, max_value=2
 
 if not agrupar_brasil:
     filtrar_uf = st.sidebar.checkbox("Filtrar por UF?", value=True)
-    sigla_uf = st.sidebar.selectbox("UF:", ["DF", "SP", "RJ", "MG", "BA", "RS", "PR", "PE", "SC", "GO"], index=0) if filtrar_uf else None
+    sigla_uf = st.sidebar.selectbox("UF:", ["DF", "SP", "RJ", "MG", "BA", "RS", "PR", "PE", "SC", "GO"], index=None, placeholder="Escolha um Estado") if filtrar_uf else None
 else:
     sigla_uf = None
 
