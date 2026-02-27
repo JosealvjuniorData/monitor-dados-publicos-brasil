@@ -285,19 +285,15 @@ if tabela_id:
         elif escolha == "🎨 BI Self-Service":
             if TEM_PYGWALKER:
                 try:
-                    st.sidebar.markdown("### ℹ️ Sobre")
-                    st.sidebar.info(
-                        "**Fonte de Dados:** Este painel utiliza a camada gratuita da 'Base dos Dados'. "
-                        "Alguns indicadores podem apresentar atraso de 3 a 12 meses em relação à data atual "
-                        "devido às políticas de acesso da API."
-                    )
-                    st.info("💡 Clique no botão verde para abrir em tela cheia.")
+                    
+                    st.info("🔥 Monte a análise movimentando as vaviávies para os eixos x e y. Escolha o tipo de gráfico e customize vários pontos do seu gráfico ou tabela.")
+                    st.info("💡 É possível vizualizar em tela cheia. Clique no botão verde para abrir.")
                     
                     # --- APLICA A LIMPEZA ANTES DE TUDO ---
                     df_limpo = sanitizar_df(df)
                     
                     html_pyg = pyg.to_html(df_limpo)
-                    st.markdown(criar_link_nova_aba(html_pyg, "Abrir BI em Tela Cheia", "bi_analise.html"), unsafe_allow_html=True)
+                    st.markdown(criar_link_nova_aba(html_pyg, "Para abrir BI em Tela Cheia", "bi_analise.html"), unsafe_allow_html=True)
                     
                     st.write("---")
                     st.write("**Versão Embarcada:**")
