@@ -222,7 +222,7 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
         elif 'ano' in colunas_existentes:
             query += " ORDER BY ano DESC"
 
-        query += " LIMIT 5000" 
+        query += " LIMIT 50000" 
     
     try:
         job = client.query(query)
