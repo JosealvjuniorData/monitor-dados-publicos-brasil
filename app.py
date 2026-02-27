@@ -318,7 +318,8 @@ if tabela_id:
                             html_content = f.read()
                         
                         st.success("Relatório pronto!")
-                        st.markdown(criar_link_nova_aba(html_content, "Abrir Relatório Completo", "relatorio_ia.html"), unsafe_allow_html=True)
+                        st.info("🚨 Estudo automático das variávies e suas intereções.")
+                        st.markdown(criar_link_nova_aba(html_content, "Abrir Relatório Completo outra aba", "relatorio_ia.html"), unsafe_allow_html=True)
                         st.write("---")
                         components.html(html_content, height=800, scrolling=True)
 
