@@ -285,6 +285,12 @@ if tabela_id:
         elif escolha == "🎨 BI Self-Service":
             if TEM_PYGWALKER:
                 try:
+                    st.sidebar.markdown("### ℹ️ Sobre")
+                    st.sidebar.info(
+                        "**Fonte de Dados:** Este painel utiliza a camada gratuita da 'Base dos Dados'. "
+                        "Alguns indicadores podem apresentar atraso de 3 a 12 meses em relação à data atual "
+                        "devido às políticas de acesso da API."
+                    )
                     st.info("💡 Clique no botão verde para abrir em tela cheia.")
                     
                     # --- APLICA A LIMPEZA ANTES DE TUDO ---
