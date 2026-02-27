@@ -53,29 +53,6 @@ UX Desktop-to-Web: Desenvolvemos um sistema de links em Base64 que permite abrir
 5.  **Relatórios IA:** Geração automática de HTML com correlações, distribuição e análise de dados.
 
 ---
-## 📖 Como Expandir o Catálogo (Guia Prático)
-
-O projeto foi desenhado para ser modular. Para adicionar um novo Tema, Dataset ou Tabela, você não precisa mexer no código Python, basta editar o arquivo catalogo_mvp.json.
-
-Onde encontrar o ID Técnico?
-Acesse a [Pesquida da base dos dados][https://basedosdados.org/search]
-
-Pesquise pelo tema desejado e clique no conjunto de dados (Dataset).
-
-No menu lateral esquerdo, você encontrará a lista de tabelas disponíveis para aquele dataset.
-
-Clique na tabela desejada e copie o campo "ID da Tabela" que aparecerá no centro da tela (ex: br_ms_sim.microdados).
-
-Passo a Passo da Atualização:
-Abra o arquivo catalogo_mvp.json no seu repositório.
-
-Insira a nova entrada seguindo a hierarquia (Tema > Dataset > Tabela).
-
-No valor da Tabela, cole o ID Técnico que você copiou do site.
-
-Faça o git push e a nova base aparecerá instantaneamente no menu do aplicativo!
-
----
 
 ## 💻 Como Rodar este Projeto Localmente
 
@@ -111,6 +88,30 @@ Nota: O arquivo credenciais.json está no .gitignore para segurança.
 ### 4. Execução
 Rode o comando do Streamlit:
 streamlit run app.py
+
+## 📖 Como Expandir o Catálogo (Guia Prático)
+
+O projeto foi desenhado para ser modular. Para adicionar um novo Tema, Dataset ou Tabela, você não precisa mexer no código Python, basta editar o arquivo catalogo_mvp.json.
+
+Onde encontrar o ID Técnico?
+Acesse a [Pesquida da base dos dados][https://basedosdados.org/search]
+
+Pesquise pelo tema desejado e clique no conjunto de dados (Dataset).
+
+No menu lateral esquerdo, você encontrará a lista de tabelas disponíveis para aquele dataset.
+
+Clique na tabela desejada e copie o campo "ID da Tabela" que aparecerá no centro da tela (ex: br_ms_sim.microdados).
+
+Passo a Passo da Atualização:
+Abra o arquivo catalogo_mvp.json no seu repositório.
+
+Insira a nova entrada seguindo a hierarquia (Tema > Dataset > Tabela).
+
+No valor da Tabela, cole o ID Técnico que você copiou do site.
+
+Faça o git push e a nova base aparecerá instantaneamente no menu do aplicativo!
+
+---
 
 ## 📝 Licença
 Este projeto é de código aberto (Open Source). Sinta-se à vontade para contribuir!
