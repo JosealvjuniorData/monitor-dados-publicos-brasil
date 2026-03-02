@@ -26,15 +26,15 @@
     },
     "Segurança Pública": {
         "Fórum Brasileiro de Segurança": {
-            "Estatísticas de Segurança (Município)": "br_fbsp_seguranca.municipio"
+            "Estatísticas de Segurança (Município)": "br_fbsp_absp.municipio"
         },
         "ISP (Rio de Janeiro)": {
-            "Crimes por Delegacia (RJ)": "br_isp_estatisticas_seguranca.taxa_evolucao_mensal_uf"
+            "Crimes por Delegacia (RJ)": "br_rj_isp_estatisticas_seguranca.taxa_evolucao_mensal_uf"
         }
     },
     "Meio Ambiente e Clima": {
         "INPE (Desmatamento)": {
-            "Desmatamento Prodes (Amazônia)": "br_inpe_prodes.desmatamento_municipio",
+            "Desmatamento Prodes (Amazônia)": "br_inpe_prodes.municipio_bioma",
             "Focos de Queimadas": "br_inpe_queimadas.microdados"
         },
         "SEEG (Emissões)": {
@@ -52,12 +52,12 @@
             "Resultados por Seção Eleitoral": "br_tse_eleicoes.resultados_partido_municipio"
         },
         "Câmara dos Deputados": {
-            "Gastos da Cota Parlamentar": "br_camara_dados_abertos.cota_parlamentar"
+            "Despeas Parlamentar": "br_camara_dados_abertos.despesa"
         }
     },
     "Energia e Infraestrutura": {
-        "ANEEL": {
-            "Tarifas de Energia (Residencial)": "br_aneel_tarifas.distribuidoras_residenciais"
+        "Ministério do Desenvolvimento regional": {
+            "Sistema Nacional de Informações sobre Saneamento (SNIS)": "br_mdr_snis.prestador_agua_esgoto"
         }
     }
 }
