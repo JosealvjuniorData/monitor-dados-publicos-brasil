@@ -236,6 +236,32 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agregacao="Dados B
         
         query += f" GROUP BY {cols_str}"
         query += f" ORDER BY ano DESC LIMIT 50000"
+        
+    elif agregacao != "Dados Brutos (Sem Agrupar)" and "bolsa_familia" in tabela_sql:
+        # No Bolsa Família os nomes das colunas de tempo são diferentes!
+        colunas_agrupamento = ["ano_competencia", "mes_competencia"]
+        
+        if agregacao == "Agrupar por Município" and "id_municipio" in colunas_existentes:
+            colunas_agrupamento.append("id_municipio")
+        elif agregacao == "Agrupar por Estado (UF)" and "sigla_uf" in colunas_existentes:
+            colunas_agrupamento.append("sigla_uf")
+            
+        cols_str = ", ".join(colunas_agrupamento)
+        
+        # A Mágica: Somamos o dinheiro e contamos os beneficiários!
+        query = f"""
+        SELECT {cols_str}, 
+               SUM(valor_parcela) as total_pago_reais,
+               COUNT(cpf_favorecido) as total_beneficiarios
+        FROM `{tabela_full}`
+        WHERE 1=1
+        """
+        # Ajustando o filtro de ano e UF para os nomes corretos da tabela
+        if ano_min and 'ano_competencia' in colunas_existentes: query += f" AND ano_competencia >= {ano_min}"
+        if uf and 'sigla_uf' in colunas_existentes: query += f" AND sigla_uf = '{uf}'"
+        
+        query += f" GROUP BY {cols_str}"
+        query += f" ORDER BY ano_competencia DESC, mes_competencia DESC LIMIT 50000"
 
     else:
         # 3. Lógica Genérica (Dados Brutos)
