@@ -178,19 +178,27 @@ if tema:
             tabela_id = catalogo_atual[tema][orgao][tabela_nome]
 
 st.sidebar.divider()
-st.sidebar.subheader("🎯 Filtros")
-agrupar_brasil = st.sidebar.checkbox("🧮 Visão Nacional (Agregada)", value=False)
+st.sidebar.subheader("🎯 Filtros e Agregação")
+
+# 1. O novo controle de Nível Geográfico
+nivel_agregacao = st.sidebar.selectbox(
+    "🧮 Nível de Agregação:",
+    ["Dados Brutos (Sem Agrupar)", "Agrupar por Município", "Agrupar por Estado (UF)", "Agrupar Visão Nacional"],
+    index=0
+)
+
 ano_minimo = st.sidebar.number_input("Ano inicial:", min_value=1990, max_value=2026, value=2018)
 
-if not agrupar_brasil:
-    filtrar_uf = st.sidebar.checkbox("Filtrar por UF?", value=True)
+# 2. O filtro de UF agora aparece sempre que não for a Visão Nacional
+if nivel_agregacao != "Agrupar Visão Nacional":
+    filtrar_uf = st.sidebar.checkbox("Filtrar por uma UF específica?", value=True)
     sigla_uf = st.sidebar.selectbox("UF:", ["DF", "SP", "RJ", "MG", "BA", "RS", "PR", "PE", "SC", "GO"], index=None, placeholder="Escolha um Estado") if filtrar_uf else None
 else:
     sigla_uf = None
 
 # --- EXTRAÇÃO INTELIGENTE ---
 @st.cache_data(ttl=3600)
-def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
+def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agregacao="Dados Brutos (Sem Agrupar)"):
     tabela_full = f"basedosdados.{tabela_sql}" if not tabela_sql.startswith("basedosdados.") else tabela_sql
     client = bigquery.Client(credentials=credenciais, project=proj_id, location="US")
     
@@ -201,18 +209,36 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agrupar=False):
     except:
         colunas_existentes = []
 
-    # 2. Lógica Específica
-    if agrupar and ("frota" in tabela_sql or "caged" in tabela_sql):
+    # 2. Lógica Dinâmica de Agregação
+    if agregacao != "Dados Brutos (Sem Agrupar)" and ("frota" in tabela_sql or "caged" in tabela_sql):
+        # Define quais colunas vão entrar no SELECT e no GROUP BY
+        colunas_agrupamento = ["ano"]
+        if "mes" in colunas_existentes: colunas_agrupamento.append("mes")
+        if "tipo_veiculo" in colunas_existentes: colunas_agrupamento.append("tipo_veiculo")
+        
+        # Adiciona a dimensão geográfica escolhida pelo usuário
+        if agregacao == "Agrupar por Município" and "id_municipio" in colunas_existentes:
+            colunas_agrupamento.append("id_municipio")
+        elif agregacao == "Agrupar por Estado (UF)" and "sigla_uf" in colunas_existentes:
+            colunas_agrupamento.append("sigla_uf")
+        # Se for Nacional, não adiciona nenhuma coluna geográfica
+            
+        # Monta a string de colunas separada por vírgula
+        cols_str = ", ".join(colunas_agrupamento)
+        
         query = f"""
-        SELECT ano, mes, tipo_veiculo, SUM(quantidade) as quantidade 
+        SELECT {cols_str}, SUM(quantidade) as quantidade 
         FROM `{tabela_full}`
-        WHERE ano >= {ano_min}
-        GROUP BY ano, mes, tipo_veiculo
-        ORDER BY ano DESC, mes DESC
-        LIMIT 2000
+        WHERE 1=1
         """
+        if ano_min and 'ano' in colunas_existentes: query += f" AND ano >= {ano_min}"
+        if uf and 'sigla_uf' in colunas_existentes: query += f" AND sigla_uf = '{uf}'"
+        
+        query += f" GROUP BY {cols_str}"
+        query += f" ORDER BY ano DESC LIMIT 50000"
+
     else:
-        # 3. Lógica Genérica
+        # 3. Lógica Genérica (Dados Brutos)
         query = f"SELECT * FROM `{tabela_full}` WHERE 1=1"
         if ano_min and 'ano' in colunas_existentes: query += f" AND ano >= {ano_min}"
         if uf and 'sigla_uf' in colunas_existentes: query += f" AND sigla_uf = '{uf}'"
@@ -241,7 +267,7 @@ if tabela_id:
         with st.spinner("Baixando dados da nuvem (isso pode levar alguns segundos)..."):
             try:
                 # Aqui o sistema TENTA extrair os dados normalmente
-                df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, agrupar_brasil)
+                df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, nivel_agregacao)
                 
                 # Se der certo, ele segue o fluxo normal (mantenha o código que você já tem aqui)
                 st.success(f"✅ Dados carregados com sucesso! ({len(df)} linhas)")
