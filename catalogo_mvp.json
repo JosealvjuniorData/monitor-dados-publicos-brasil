@@ -6,7 +6,13 @@
         },
         "IBGE - Índices de Preços": {
             "IPCA (Inflação) - Mesal": "br_ibge_ipca.mes_brasil"
-        }
+        },
+        "CGU - Bolsa Família": {
+            "Utilização do Bolsa Família": "br_cgu_beneficios_cidadao.novo_bolsa_familia"
+        },
+        "IPEA - Vulnerabilidade Social": {
+            "Atlas de Vulnerabilidade Social": "br_ipea_avs.municipio"
+        } 
     },
     "Trabalho e Emprego": {
         "Ministério da Economia (CAGED)": {
