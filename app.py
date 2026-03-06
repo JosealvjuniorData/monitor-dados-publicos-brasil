@@ -256,6 +256,24 @@ def extrair_dados(tabela_sql, proj_id, ano_min=None, uf=None, agregacao="Dados B
         return df
     except Exception as e:
         raise Exception(f"Erro SQL: {e}")
+        
+# --- DICIONÁRIO DE MUNICÍPIOS ---
+@st.cache_data(ttl=86400) # Cache dura 24 horas
+def carregar_dicionario(proj_id):
+    client = bigquery.Client(credentials=credenciais, project=proj_id, location="US")
+    # Pega apenas o ID, o Nome da cidade e, de bônus, a Região do Brasil!
+    query = """
+    SELECT 
+        id_municipio, 
+        nome AS nome_municipio, 
+        nome_regiao 
+    FROM `basedosdados.br_bd_diretorios_brasil.municipio`
+    """
+    try:
+        df_dic = client.query(query).to_dataframe(create_bqstorage_client=False)
+        return df_dic
+    except Exception as e:
+        return pd.DataFrame() # Retorna vazio se der erro, para não quebrar o app
 
 # --- ÁREA PRINCIPAL ---
 st.title("📚 Monitor de Dados Públicos")
@@ -266,12 +284,25 @@ if tabela_id:
     if st.button("🚀 Carregar Dados", type="primary"):
         with st.spinner("Baixando dados da nuvem (isso pode levar alguns segundos)..."):
             try:
-                # Aqui o sistema TENTA extrair os dados normalmente
+                # 1. Extrai os dados brutos ou agrupados
                 df = extrair_dados(tabela_id, project_id, ano_minimo, sigla_uf, nivel_agregacao)
                 
-                # Se der certo, ele segue o fluxo normal (mantenha o código que você já tem aqui)
-                st.success(f"✅ Dados carregados com sucesso! ({len(df)} linhas)")
-                # Tenta criar data de referência
+                # ==========================================
+                # 2. O CRUZAMENTO COM O DICIONÁRIO (A Mágica)
+                # ==========================================
+                if 'id_municipio' in df.columns:
+                    df_dic = carregar_dicionario(project_id)
+                    
+                    if not df_dic.empty:
+                        # Garante que os IDs são texto para o Pandas não confundir números
+                        df['id_municipio'] = df['id_municipio'].astype(str)
+                        df_dic['id_municipio'] = df_dic['id_municipio'].astype(str)
+                        
+                        # Faz o LEFT JOIN (Traz o nome_municipio e a nome_regiao)
+                        df = pd.merge(df, df_dic, on='id_municipio', how='left')
+                # ==========================================
+                
+                # 3. Cria a data de referência (seu código original)
                 if 'ano' in df.columns and 'mes' in df.columns:
                     try:
                         df['data_referencia'] = pd.to_datetime(df['ano'].astype(str) + '-' + df['mes'].astype(str) + '-01', errors='coerce')
@@ -279,20 +310,15 @@ if tabela_id:
                     except: pass
                 
                 st.session_state['df_analise'] = df
-                st.success(f"Sucesso! {len(df)} linhas carregadas.")
-            except Exception as e:
-                # Se o código "quebrar", ele cai aqui no EXCEPT
-                erro_str = str(e)
+                st.success(f"✅ Dados carregados com sucesso! ({len(df)} linhas)")
                 
-                # Verifica se o erro foi o famoso "404 Not Found" da Base dos Dados
+            except Exception as e:
+                erro_str = str(e)
                 if "Not found" in erro_str or "404" in erro_str:
                     st.warning(f"⚠️ **Atenção:** A tabela `{tabela_id}` não está mais disponível neste endereço.")
-                    st.info("💡 **O que aconteceu?** A Base dos Dados pode ter atualizado ou renomeado esta tabela. "
-                            "Nossa equipe técnica (seu robô no GitHub 🤖) já foi notificada para corrigir este link "
-                            "na próxima atualização. Por favor, tente outra base do catálogo!")
+                    st.info("💡 A Base dos Dados pode ter atualizado esta tabela. Tente outra base do catálogo!")
                 else:
-                    # Se for qualquer outro erro (ex: internet caiu, limite de cota), mostra o erro real
-                    st.error(f"❌ Ocorreu um erro inesperado ao conectar com a Base dos Dados: {erro_str}")
+                    st.error(f"❌ Erro ao conectar com a Base dos Dados: {erro_str}")
                 
     if 'df_analise' in st.session_state:
         df = st.session_state['df_analise']
