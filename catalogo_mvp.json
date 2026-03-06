@@ -1,4 +1,12 @@
 {
+    "Administração Pública":{
+        "CGU - Servidores Executivo Federal":{
+            "Cadastro de Servidores": "br_cgu_servidores_executivo_federal.cadastro_servidores"
+        },
+        "Ministério do Planejamento e Orçamento": {
+            "Cargos e Funções": "br_mp_pep.cargos_funcoes"    
+        }
+    },
     "Economia e Sociedade (IBGE)": {
         "IBGE - Censo Demográfico": {
             "População por Município (Série Histórica)": "br_ibge_populacao.municipio",
@@ -9,9 +17,6 @@
         },
         "CGU - Bolsa Família": {
             "Utilização do Bolsa Família": "br_cgu_beneficios_cidadao.novo_bolsa_familia"
-        },
-        "IPEA - Vulnerabilidade Social": {
-            "Atlas de Vulnerabilidade Social": "br_ipea_avs.municipio"
         } 
     },
     "Trabalho e Emprego": {
